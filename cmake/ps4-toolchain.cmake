@@ -75,7 +75,7 @@ set(CMAKE_ASM_COMPILER_TARGET ${_PS4_TARGET})
 # projects overwrite CMAKE_CXX_FLAGS wholesale.
 #  - libc++ headers have to come before the C headers (they wrap them with #include_next).
 #  - our own builds (SDL2 2.0.18, ...) must win over the old copies bundled with OpenOrbis.
-set(_PS4_COMMON "-fPIC -funwind-tables -D__PS4__ -D__ORBIS__ -D_BSD_SOURCE -D_GNU_SOURCE -isysroot \"${OO_PS4_TOOLCHAIN}\"")
+set(_PS4_COMMON "--target=${_PS4_TARGET} -fPIC -funwind-tables -D__PS4__ -D__ORBIS__ -D_BSD_SOURCE -D_GNU_SOURCE -isysroot \"${OO_PS4_TOOLCHAIN}\"")
 # ps4_fixups.h corrects the struct stat layout of the OpenOrbis headers; it has to be seen
 # before any system header, hence the forced include.
 set(_PS4_COMPAT "-isystem \"${_PS4_REPO_ROOT}/compat/include\" -include \"${_PS4_REPO_ROOT}/compat/include/ps4_fixups.h\"")

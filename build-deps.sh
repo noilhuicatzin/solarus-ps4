@@ -2,7 +2,9 @@
 # Cross-builds every third-party dependency of Solarus for PS4 into solarus-ps4/prefix.
 #
 # Dependency map (see ESTUDIO.md in ~/workspace/solarus-estudio/):
-#   - zlib, libpng, libjpeg-turbo, freetype: needed by SDL2_image / SDL2_ttf.
+#   - zlib, libpng, freetype: needed by SDL2_ttf / freetype.
+#     (libjpeg-turbo NOT built: SDL2_image 2.8.8 uses its bundled STB backend
+#     by default, which loads JPG/PNG without libjpeg; Solarus only saves PNG.)
 #   - ogg, vorbis: audio decoders used directly by Solarus.
 #   - libmodplug: tracker music (Solarus ModPlug dependency).
 #   - glm: header-only math library.
@@ -56,10 +58,9 @@ build zlib "$HERE/zlib-cmake" -DZLIB_SRC="$(W "$SRC/zlib")"
 fetch libpng https://github.com/glennrp/libpng.git v1.6.44
 build libpng "$SRC/libpng" -DPNG_SHARED=OFF -DPNG_STATIC=ON -DPNG_TESTS=OFF -DPNG_TOOLS=OFF
 
-fetch libjpeg-turbo https://github.com/libjpeg-turbo/libjpeg-turbo.git 3.0.4
-build libjpeg-turbo "$SRC/libjpeg-turbo" -DENABLE_SHARED=OFF -DENABLE_STATIC=ON \
-    -DWITH_TURBOJPEG=OFF -DWITH_JAVA=OFF -DWITH_TOOLS=OFF -DWITH_TESTS=OFF -DWITH_SIMD=OFF
-
+# libjpeg-turbo intentionally NOT built (auditoría 2026-11-08): SDL2_image 2.8.8
+# defaults to its bundled STB backend (SDL2IMAGE_BACKEND_STB=ON), which loads
+# JPG/PNG without libjpeg, and Solarus never calls IMG_SaveJPG (only IMG_SavePNG).
 fetch freetype https://github.com/freetype/freetype.git VER-2-13-3
 build freetype "$SRC/freetype" -DFT_WITH_ZLIB=ON -DFT_WITH_PNG=ON -DFT_WITH_BZIP2=OFF \
     -DFT_WITH_HARFBUZZ=OFF -DFT_WITH_BROTLI=OFF
