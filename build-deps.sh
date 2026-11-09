@@ -126,8 +126,13 @@ fi
 build physfs "$SRC/physfs" -DPHYSFS_BUILD_TEST=OFF -DPHYSFS_BUILD_STATIC=ON -DPHYSFS_BUILD_SHARED=OFF
 
 # Lua 5.1.5 (tarball, no git repo): built with the lua-cmake wrapper below.
+# lua.org is flaky from the runners (run #13: curl exit 28, could not even
+# connect), so retry hard and fall back to the Debian mirror, which carries
+# the same pristine upstream tarball (lua5.1_5.1.5.orig.tar.gz extracts to
+# lua-5.1.5/ with the same src/ and etc/ layout).
 if [ ! -f "$SRC/lua-5.1.5.tar.gz" ]; then
-    curl -fL -o "$SRC/lua-5.1.5.tar.gz" https://www.lua.org/ftp/lua-5.1.5.tar.gz
+    curl -fL --retry 8 --retry-delay 15 --retry-all-errors -o "$SRC/lua-5.1.5.tar.gz" https://www.lua.org/ftp/lua-5.1.5.tar.gz \
+    || curl -fL --retry 3 --retry-delay 10 -o "$SRC/lua-5.1.5.tar.gz" https://deb.debian.org/debian/pool/main/l/lua5.1/lua5.1_5.1.5.orig.tar.gz
 fi
 if [ ! -d "$SRC/lua-5.1.5" ]; then
     tar -xzf "$SRC/lua-5.1.5.tar.gz" -C "$SRC"
