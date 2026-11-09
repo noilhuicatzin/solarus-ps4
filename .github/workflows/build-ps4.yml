@@ -49,7 +49,7 @@ jobs:
         run: |
           mkdir -p ../tools
           cd ../tools
-          [ -f cmake-3.28.6-windows-x86_64/bin/cmake.exe ] || curl -fL --retry 8 --retry-delay 15 --retry-all-errors -o cmake.zip https://github.com/Kitware/CMake/releases/download/v3.28.6/cmake-3.28.6-windows-x86_64.zip
+          [ -f cmake-3.28.6-windows-x86_64/bin/cmake.exe ] || { curl -fL --retry 8 --retry-delay 15 --retry-all-errors -o cmake.zip https://github.com/Kitware/CMake/releases/download/v3.28.6/cmake-3.28.6-windows-x86_64.zip || curl -fL --retry 8 --retry-delay 15 --retry-all-errors -o cmake.zip https://cmake.org/files/v3.28/cmake-3.28.6-windows-x86_64.zip; }
           [ -f cmake-3.28.6-windows-x86_64/bin/cmake.exe ] || 7z x -y cmake.zip >/dev/null
           [ -f ninja/ninja.exe ] || curl -fL --retry 8 --retry-delay 15 --retry-all-errors -o ninja.zip https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-win.zip
           [ -f ninja/ninja.exe ] || (mkdir -p ninja && 7z x -y ninja.zip -oninja >/dev/null)
