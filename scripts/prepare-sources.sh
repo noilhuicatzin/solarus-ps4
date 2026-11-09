@@ -6,10 +6,15 @@
 #      <workspace>/solarus (sibling of solarus-ps4).
 #   2. Verifies the PS4-relevant CMake options exist in that version
 #      (SOLARUS_GL_ES, SOLARUS_USE_LUAJIT, SOLARUS_BASE_WRITE_DIR,
-#      SOLARUS_DEFAULT_QUEST): v1 needs NO source patch, the whole PS4
-#      adaptation is done with -D options in configure.sh. If a future
-#      version drops one of them, this script fails loudly instead of
-#      silently building the wrong thing.
+#      SOLARUS_DEFAULT_QUEST): the whole PS4 adaptation is done with -D
+#      options in configure.sh, except ONE source patch (step 3). If a
+#      future version drops one of the options, this script fails loudly
+#      instead of silently building the wrong thing.
+#   3. Applies patches/alwrapper-ps4-efx-nullcheck.patch to the Solarus
+#      sources (idempotent): mojoAL has no EFX, so init_efx_system()
+#      must only report EFX as available when every function pointer
+#      was actually retrieved, or the first audio effect would call a
+#      NULL pointer. See the patch header for the full reasoning.
 #
 # It is idempotent: if <workspace>/solarus already exists it reuses it
 # (deletes it first only if --clean is passed). It never downloads game
@@ -52,4 +57,13 @@ for opt in SOLARUS_GL_ES SOLARUS_USE_LUAJIT SOLARUS_BASE_WRITE_DIR SOLARUS_DEFAU
     fi
 done
 
-echo "== sources ready: $WORKSPACE/solarus (no patches needed in v1)"
+echo "== applying PS4 source patches (idempotent)"
+PATCH="$HERE/patches/alwrapper-ps4-efx-nullcheck.patch"
+if git -C "$WORKSPACE/solarus" apply --reverse --check "$PATCH" >/dev/null 2>&1; then
+    echo "   already applied: alwrapper-ps4-efx-nullcheck.patch"
+else
+    git -C "$WORKSPACE/solarus" apply "$PATCH"
+    echo "   applied: alwrapper-ps4-efx-nullcheck.patch"
+fi
+
+echo "== sources ready: $WORKSPACE/solarus (1 PS4 patch applied)"
