@@ -38,11 +38,32 @@ int main(int argc, char *argv[])
     SDL_SetHint(SDL_HINT_PS4_PIGLET_MODULES_PATH, "/data/self/system/common/lib");
     dlog("[diag] piglet hint set to /data/self/system/common/lib");
 
+    /* Which video drivers are even in this build? (Works before SDL_Init.) */
+    {
+        char buf[512];
+        int n = SDL_GetNumVideoDrivers();
+        snprintf(buf, sizeof(buf), "[diag] video drivers in build: %d", n);
+        dlog(buf);
+        for (int i = 0; i < n; i++) {
+            snprintf(buf, sizeof(buf), "[diag] video driver[%d] = %s", i, SDL_GetVideoDriver(i));
+            dlog(buf);
+        }
+    }
+
     dlog("[diag] SDL_Init(VIDEO)...");
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         char buf[512];
         snprintf(buf, sizeof(buf), "[diag] SDL_Init(VIDEO) failed: %s", SDL_GetError());
         dlog(buf);
+        /* SDL_Init tries drivers in order and the final error is generic,
+         * so retry just the PS4 driver to capture its specific error. */
+        dlog("[diag] retry SDL_VideoInit(\"PS4\") for the specific error...");
+        if (SDL_VideoInit("PS4") != 0) {
+            snprintf(buf, sizeof(buf), "[diag] SDL_VideoInit(PS4) failed: %s", SDL_GetError());
+            dlog(buf);
+        } else {
+            dlog("[diag] SDL_VideoInit(PS4) ok on retry");
+        }
         if (diag_log) fclose(diag_log);
         return 1;
     }
