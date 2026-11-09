@@ -53,6 +53,7 @@ cmake -G Ninja -S "$(W "$HERE/../solarus")" -B "$(W "$HERE/build")" \
     -DPHYSFS_LIBRARY="$(W "$P/lib/libphysfs.a")" \
     -DLUA_INCLUDE_DIR="$(W "$P/include")" \
     -DLUA_LIBRARY="$(W "$P/lib/liblua.a")" \
+    -DLUA_MATH_LIBRARY="$(W "$OO_PS4_TOOLCHAIN/lib/libm.a")" \
     -DMODPLUG_INCLUDE_DIR="$(W "$P/include")" \
     -DMODPLUG_LIBRARY="$(W "$P/lib/libmodplug.a")" \
     -DGLM_INCLUDE_DIR="$(W "$P/include")" \
