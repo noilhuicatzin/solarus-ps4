@@ -1,0 +1,153 @@
+name: Build.pkg for PS4
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: solarus-ps4-2.1.4
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 240
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: solarus-ps4
+          fetch-depth: 1
+
+      - name: Build info
+        working-directory: solarus-ps4
+        run: |
+          {
+            echo "Solarus PS4 build"
+            echo "Repo: solarus-ps4 (this repo)"
+            echo "Solarus: v2.1.4 (gitlab.com/solarus-games/solarus, tag v2.1.4, commit 29437e8a98263b1c9c2b742c39894a8eb6a2c200)"
+            echo "SDL: 2.0.18, PacBrew/SDL branch ps4"
+            echo "PhysFS: 3.2.0, Lua: 5.1.5, OpenAL: mojoAL (vendored, Switch era)"
+            echo "Toolchain: OpenOrbis 0.5.4 + LLVM 18.1.8"
+            echo "Commit: $GITHUB_SHA"
+            echo "Run: $GITHUB_RUN_ID / attempt $GITHUB_RUN_ATTEMPT"
+            echo "Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > build-info.txt
+
+      - name: Cache tools
+        uses: actions/cache@v4
+        with:
+          path: tools
+          key: solarus-ps4-tools-oo0.5.4-llvm18.1.8-cmake3.28.6-ninja1.12.1-net8-v1
+
+      - name: Download tools
+        working-directory: solarus-ps4
+        run: |
+          mkdir -p ../tools
+          cd ../tools
+          [ -f cmake-3.28.6-windows-x86_64/bin/cmake.exe ] || curl -fL -o cmake.zip https://github.com/Kitware/CMake/releases/download/v3.28.6/cmake-3.28.6-windows-x86_64.zip
+          [ -f cmake-3.28.6-windows-x86_64/bin/cmake.exe ] || 7z x -y cmake.zip >/dev/null
+          [ -f ninja/ninja.exe ] || curl -fL -o ninja.zip https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-win.zip
+          [ -f ninja/ninja.exe ] || (mkdir -p ninja && 7z x -y ninja.zip -oninja >/dev/null)
+          [ -f llvm/bin/clang.exe ] || curl -fL -o llvm.zip https://github.com/OpenOrbis/llvm/releases/download/18.1.8/llvm-18.1.8-win64.zip
+          [ -f llvm/bin/clang.exe ] || 7z x -y llvm.zip >/dev/null
+          [ -f OpenOrbis/OpenOrbis/PS4Toolchain/include/stdio.h ] || curl -fL -o openorbis.zip https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5.4/openorbis-ps4-toolchain-0.5.4.zip
+          [ -f OpenOrbis/OpenOrbis/PS4Toolchain/include/stdio.h ] || 7z x -y openorbis.zip >/dev/null
+          ls -la
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Prepare sources
+        working-directory: solarus-ps4
+        run: bash scripts/prepare-sources.sh
+
+      - name: Cache deps
+        uses: actions/cache@v4
+        with:
+          path: |
+            solarus-ps4/prefix
+            solarus-ps4/deps
+          key: solarus-ps4-deps-oo0.5.4-llvm18.1.8-sdl2.0.18ps4-physfs3.2.0-lua5.1.5-v1-${{ hashFiles('solarus-ps4/build-deps.sh', 'solarus-ps4/cmake/ps4-toolchain.cmake', 'solarus-ps4/cmake/Platform/PS4.cmake') }}
+
+      - name: Build deps
+        working-directory: solarus-ps4
+        run: bash build-deps.sh
+
+      - name: Configure Solarus
+        working-directory: solarus-ps4
+        run: bash configure.sh
+
+      - name: Build solarus-run
+        working-directory: solarus-ps4
+        run: |
+          source env.sh
+          cmake --build build --target solarus-run --parallel 4
+          ls -lh build/cli/solarus-run.elf
+          file build/cli/solarus-run.elf || true
+
+      - name: Build GL smoke test
+        working-directory: solarus-ps4
+        run: |
+          source env.sh
+          cmake -G Ninja -S tests/gl-smoke -B build-gl-smoke \
+            -DCMAKE_TOOLCHAIN_FILE="$(cygpath -m "$PWD/cmake/ps4-toolchain.cmake")" \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-gl-smoke
+          ls -lh build-gl-smoke/gl-smoke.elf
+
+      - name: Package engine
+        working-directory: solarus-ps4
+        run: |
+          bash package.sh
+          ls -lh out/
+
+      - name: Package GL smoke test
+        working-directory: solarus-ps4
+        env:
+          TITLE: Solarus GL Test
+          TITLE_ID: SOLR00002
+          CONTENT_ID: IV0000-SOLR00002_00-SOLARUSGLTEST000
+          ELF: build-gl-smoke/gl-smoke.elf
+          OUT_DIR: out-smoke
+        run: |
+          bash package.sh
+          ls -lh out-smoke/
+
+      - name: Upload artifact (engine pkg)
+        uses: actions/upload-artifact@v4
+        with:
+          name: solarus-ps4-2.1.4
+          path: |
+            solarus-ps4/out/*.pkg
+            solarus-ps4/build/cli/solarus-run.elf
+            solarus-ps4/build-info.txt
+          retention-days: 14
+
+      - name: Upload artifact (GL smoke test)
+        uses: actions/upload-artifact@v4
+        with:
+          name: solarus-ps4-gl-smoke
+          path: |
+            solarus-ps4/out-smoke/*.pkg
+            solarus-ps4/build-gl-smoke/gl-smoke.elf
+          retention-days: 14
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: solarus-ps4-logs
+          path: |
+            solarus-ps4/deps/build/*/*.log
+            solarus-ps4/build/CMakeFiles/CMakeOutput.log
+            solarus-ps4/build/CMakeFiles/CMakeError.log
+            solarus-ps4/build-gl-smoke/CMakeFiles/CMakeOutput.log
+            solarus-ps4/build-gl-smoke/CMakeFiles/CMakeError.log
+          retention-days: 14

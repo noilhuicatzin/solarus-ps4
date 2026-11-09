@@ -1,0 +1,10 @@
+# Build outputs (never committed)
+/solarus/
+/prefix/
+/deps/
+/build/
+/build-gl-smoke/
+/pkg/
+/out/
+/out-smoke/
+/eboot.oelf

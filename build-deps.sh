@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+# Cross-builds every third-party dependency of Solarus for PS4 into solarus-ps4/prefix.
+#
+# Dependency map (see ESTUDIO.md in ~/workspace/solarus-estudio/):
+#   - zlib, libpng, libjpeg-turbo, freetype: needed by SDL2_image / SDL2_ttf.
+#   - ogg, vorbis: audio decoders used directly by Solarus.
+#   - libmodplug: tracker music (Solarus ModPlug dependency).
+#   - glm: header-only math library.
+#   - SDL 2.0.18 from PacBrew/SDL branch ps4 (NOT upstream SDL and NOT
+#     OpenOrbis/SDL-PS4 2.0.9): this is the fork with the PS4 video driver
+#     (Piglet GLES 2.0), the PS4 audio driver and the PS4 joystick driver.
+#     Its CMakeLists sets SDL_VIDEO_DRIVER_PS4 itself when -DPS4=ON.
+#   - SDL2_image, SDL2_ttf: from upstream libsdl-org.
+#   - PhysFS 3.2.0: virtual filesystem used to mount quests.
+#   - Lua 5.1.5: the quest scripting language (LuaJIT is NOT used on PS4:
+#     a JIT needs executable memory, uncertain on console).
+#   - mojoAL: tiny OpenAL 1.1 implementation on top of SDL audio, vendored
+#     from the Switch port (upstream mojoAL is SDL3-only now; the Switch-era
+#     code is SDL2 and proven on a console). This is the stand-in for
+#     OpenAL, which does not exist for PS4.
+set -e
+HERE="$(cd "$(dirname "$0")" && pwd)"
+source "$HERE/env.sh"
+SRC="$HERE/deps/src"; BLD="$HERE/deps/build"; PREFIX="$HERE/prefix"
+TC="$HERE/cmake/ps4-toolchain.cmake"
+mkdir -p "$SRC" "$BLD" "$PREFIX"
+W() { cygpath -m "$1"; }
+
+fetch() { # name url tag
+    if [ ! -d "$SRC/$1" ]; then
+        git -c advice.detachedHead=false clone -q --depth 1 --branch "$3" "$2" "$SRC/$1"
+    fi
+}
+fetch_sha() { # name url sha (repos without tags, e.g. libmodplug)
+    if [ ! -d "$SRC/$1" ]; then
+        git -c advice.detachedHead=false clone -q "$2" "$SRC/$1"
+        git -C "$SRC/$1" checkout -q "$3"
+    fi
+}
+build() { # name srcdir [cmake args...]
+    local name="$1" src="$2"; shift 2
+    if [ -f "$BLD/$name/.done" ]; then echo "== $name (cached)"; return; fi
+    echo "== $name"
+    cmake -G Ninja -S "$(W "$src")" -B "$(W "$BLD/$name")" -DCMAKE_TOOLCHAIN_FILE="$(W "$TC")" \
+        -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$(W "$PREFIX")" -DBUILD_SHARED_LIBS=OFF \
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_C_FLAGS_RELEASE="-O2 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-O2 -DNDEBUG" \
+        "$@" > "$BLD/$name.configure.log" 2>&1 || { tail -40 "$BLD/$name.configure.log"; exit 1; }
+    cmake --build "$(W "$BLD/$name")" > "$BLD/$name.build.log" 2>&1 || { tail -60 "$BLD/$name.build.log"; exit 1; }
+    cmake --install "$(W "$BLD/$name")" > "$BLD/$name.install.log" 2>&1 || { tail -40 "$BLD/$name.install.log"; exit 1; }
+    touch "$BLD/$name/.done"
+}
+
+fetch zlib https://github.com/madler/zlib.git v1.3.1
+build zlib "$HERE/zlib-cmake" -DZLIB_SRC="$(W "$SRC/zlib")"
+
+fetch libpng https://github.com/glennrp/libpng.git v1.6.44
+build libpng "$SRC/libpng" -DPNG_SHARED=OFF -DPNG_STATIC=ON -DPNG_TESTS=OFF -DPNG_TOOLS=OFF
+
+fetch libjpeg-turbo https://github.com/libjpeg-turbo/libjpeg-turbo.git 3.0.4
+build libjpeg-turbo "$SRC/libjpeg-turbo" -DENABLE_SHARED=OFF -DENABLE_STATIC=ON \
+    -DWITH_TURBOJPEG=OFF -DWITH_JAVA=OFF -DWITH_TOOLS=OFF -DWITH_TESTS=OFF -DWITH_SIMD=OFF
+
+fetch freetype https://github.com/freetype/freetype.git VER-2-13-3
+build freetype "$SRC/freetype" -DFT_WITH_ZLIB=ON -DFT_WITH_PNG=ON -DFT_WITH_BZIP2=OFF \
+    -DFT_WITH_HARFBUZZ=OFF -DFT_WITH_BROTLI=OFF
+
+fetch ogg https://github.com/xiph/ogg.git v1.3.5
+build ogg "$SRC/ogg" -DBUILD_TESTING=OFF -DINSTALL_DOCS=OFF
+
+fetch vorbis https://github.com/xiph/vorbis.git v1.3.7
+build vorbis "$SRC/vorbis" -DBUILD_TESTING=OFF
+
+# libmodplug has no tags/releases: pinned by commit (HEAD as of 2026-11-08).
+fetch_sha libmodplug https://github.com/Konstanty/libmodplug.git 6b3937da975eff2627fa8f73fa093b7769c1bff5
+build libmodplug "$SRC/libmodplug"
+
+fetch glm https://github.com/g-truc/glm.git 1.0.1
+build glm "$SRC/glm" -DGLM_BUILD_TESTS=OFF -DGLM_BUILD_INSTALL=ON
+
+# libsamplerate: SDL's PS4 block forces SDL_LIBSAMPLERATE ON (not shared),
+# so it must exist before SDL is configured. Built first, statically.
+fetch libsamplerate https://github.com/libsndfile/libsamplerate.git 0.2.2
+build libsamplerate "$SRC/libsamplerate" -DLIBSAMPLERATE_EXAMPLES=OFF -DLIBSAMPLERATE_INSTALL=ON -DBUILD_TESTING=OFF
+
+# SDL 2.0.18, PacBrew fork, ps4 branch: the PS4 video/audio/joystick drivers
+# live here. -DPS4=ON activates them (SDL's own openorbis.cmake toolchain
+# sets the same variable; our ps4-toolchain.cmake sets CMAKE_SYSTEM_NAME PS4
+# and Platform/PS4.cmake sets PS4=1 as well).
+# SDL2main is disabled on purpose (like the SoH build): Solarus links
+# SDL2::Main, but its FindSDL2 module turns SDL2::Main into an alias of
+# SDL2::Core when no SDL2main library exists, so the CLI links cleanly and
+# there is no duplicate main() (SDL's dummy main would clash with
+# Solarus's own main on PS4, where SDL_MAIN_NEEDED is not defined).
+fetch SDL https://github.com/PacBrew/SDL.git ps4
+build SDL "$SRC/SDL" -DPS4=ON -DSDL_SHARED=OFF -DSDL_STATIC=ON -DSDL_TEST=OFF -DSDL2_DISABLE_SDL2MAIN=ON -DSDL2_DISABLE_INSTALL=OFF -DSDL_X11=OFF -DSDL_WAYLAND=OFF -DSDL_OPENGL=OFF -DSDL_OPENGLES=OFF -DSDL_VULKAN=OFF -DSDL_KMSDRM=OFF -DSDL_RPI=OFF -DSDL_ALSA=OFF -DSDL_PULSEAUDIO=OFF -DSDL_PIPEWIRE=OFF -DSDL_JACK=OFF -DSDL_SNDIO=OFF -DSDL_OSS=OFF -DSDL_ESD=OFF -DSDL_ARTS=OFF -DSDL_NAS=OFF -DSDL_FUSIONSOUND=OFF -DSDL_DBUS=OFF -DSDL_IBUS=OFF -DSDL_FCITX=OFF -DSDL_LIBUDEV=OFF -DSDL_HIDAPI_LIBUSB=OFF -DSDL_RPATH=OFF -DSDL_DUMMYVIDEO=ON -DSDL_DUMMYAUDIO=ON -DSDL_DISKAUDIO=OFF -DSDL_OFFSCREEN=OFF -DSDL_LOADSO=OFF -DSDL_DIRECTFB=OFF -DSDL_SYSTEM_ICONV=OFF -DSDL_LIBICONV=OFF -DSDL_CCACHE=OFF -DSDL_FILESYSTEM=ON -DSDL_VIRTUAL_JOYSTICK=ON -DSDL_HIDAPI=ON -DSDL_HIDAPI_JOYSTICK=OFF -DSDL_WERROR=OFF
+
+fetch SDL_image https://github.com/libsdl-org/SDL_image.git release-2.8.8
+build SDL_image "$SRC/SDL_image" -DSDL2IMAGE_VENDORED=OFF -DSDL2IMAGE_SAMPLES=OFF \
+    -DSDL2IMAGE_PNG=ON -DSDL2IMAGE_JPG=ON -DSDL2IMAGE_TIF=OFF -DSDL2IMAGE_WEBP=OFF \
+    -DSDL2IMAGE_AVIF=OFF -DSDL2IMAGE_JXL=OFF
+
+fetch SDL_ttf https://github.com/libsdl-org/SDL_ttf.git release-2.24.0
+build SDL_ttf "$SRC/SDL_ttf" -DSDL2TTF_VENDORED=OFF -DSDL2TTF_SAMPLES=OFF -DSDL2TTF_HARFBUZZ=OFF
+
+fetch physfs https://github.com/icculus/physfs.git release-3.2.0
+build physfs "$SRC/physfs" -DPHYSFS_BUILD_TEST=OFF -DPHYSFS_BUILD_STATIC=ON -DPHYSFS_BUILD_SHARED=OFF
+
+# Lua 5.1.5 (tarball, no git repo): built with the lua-cmake wrapper below.
+if [ ! -f "$SRC/lua-5.1.5.tar.gz" ]; then
+    curl -fL -o "$SRC/lua-5.1.5.tar.gz" https://www.lua.org/ftp/lua-5.1.5.tar.gz
+fi
+if [ ! -d "$SRC/lua-5.1.5" ]; then
+    tar -xzf "$SRC/lua-5.1.5.tar.gz" -C "$SRC"
+fi
+build lua "$HERE/lua-cmake" -DLUA_SRC="$(W "$SRC/lua-5.1.5")"
+
+# mojoAL (vendored in this repo under mojoal/, from the Switch port): built as
+# libopenal.a, the stand-in OpenAL for PS4. Needs the SDL2 headers/libs.
+build mojoal "$HERE/mojoal-cmake" -DMOJOAL_SRC="$(W "$HERE/mojoal")" \
+    -DSDL2_INCLUDE_DIR="$(W "$PREFIX/include/SDL2")" -DSDL2_LIBRARY="$(W "$PREFIX/lib/libSDL2.a")"
+
+echo "ALL DEPS OK"
