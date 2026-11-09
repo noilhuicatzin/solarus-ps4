@@ -2,7 +2,7 @@ diff --git a/cmake/AddSolarusLibrary.cmake b/cmake/AddSolarusLibrary.cmake
 index 76fd996..0bcb921 100644
 --- a/cmake/AddSolarusLibrary.cmake
 +++ b/cmake/AddSolarusLibrary.cmake
-@@ -33,6 +33,24 @@ target_link_libraries(solarus
+@@ -33,6 +33,30 @@ target_link_libraries(solarus
      ModPlug::ModPlug
  )
  
@@ -10,16 +10,22 @@ index 76fd996..0bcb921 100644
 +# configure.sh: -DSDL2_LIBRARY / -DSDL2_TTF_LIBRARY are single .a paths),
 +# so their own dependencies are not propagated to the link line. SDL2_ttf
 +# needs FreeType and SDL2's PS4 audio driver needs libsamplerate, or the
-+# link fails with undefined FT_* / src_* symbols. Both live in the same
-+# prefix as SDL2 (derived from SDL2_LIBRARY, which the find module has
-+# already resolved by the time this file is included). Appended at the end
-+# of the PUBLIC list so they land after libSDL2_ttf.a and libSDL2.a in the
-+# final link line, which static linking requires.
++# link fails with undefined FT_* / src_* symbols. FreeType itself was built
++# with -DFT_WITH_PNG=ON -DFT_WITH_ZLIB=ON, so it also needs libpng (its
++# sfnt.c calls png_* for embedded PNG bitmaps) and libz (libpng's and
++# FreeType's own dependency) — without them the link fails with 20 undefined
++# png_* symbols. All four live in the same prefix as SDL2 (derived from
++# SDL2_LIBRARY, which the find module has already resolved by the time this
++# file is included). Appended at the end of the PUBLIC list so they land
++# after libSDL2_ttf.a and libSDL2.a in the final link line, in dependency
++# order (freetype, then png, then z), which static linking requires.
 +if(CMAKE_SYSTEM_NAME STREQUAL "PS4")
 +  get_filename_component(_PS4_PREFIX "${SDL2_LIBRARY}" DIRECTORY)
 +  get_filename_component(_PS4_PREFIX "${_PS4_PREFIX}" DIRECTORY)
 +  target_link_libraries(solarus PUBLIC
 +    "${_PS4_PREFIX}/lib/libfreetype.a"
++    "${_PS4_PREFIX}/lib/libpng.a"
++    "${_PS4_PREFIX}/lib/libz.a"
 +    "${_PS4_PREFIX}/lib/libsamplerate.a"
 +  )
 +endif()

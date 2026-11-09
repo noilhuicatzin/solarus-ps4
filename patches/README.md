@@ -35,3 +35,19 @@ cayó en `[234/234]`). El parche añade `libfreetype.a` y
 para que queden después de `libSDL2_ttf.a` y `libSDL2.a` en la línea
 de enlace, que es lo que exige el enlace estático. Solo aplica en
 PS4 (`CMAKE_SYSTEM_NAME STREQUAL "PS4"`).
+
+**v4: mismo `solarus-ps4-link-deps.patch`, ampliado** — run #15 demostró
+que el parche v3 funciona (los errores `FT_*` / `src_*` del run #14
+desaparecieron y la línea de enlace ya trae `libfreetype.a` y
+`libsamplerate.a`), pero el enlace volvió a caer en `[234/234]` con 20
+símbolos `png_*` indefinidos, referenciados por `sfnt.c` (`Load_SBit_Png`,
+`error_callback`) dentro de `libfreetype.a`. Causa: FreeType se construye
+con `-DFT_WITH_PNG=ON -DFT_WITH_ZLIB=ON` (ver `build-deps.sh`), así que
+también necesita `libpng.a` y `libz.a`, que no estaban en la línea de
+enlace. El parche ahora añade los cuatro archivos en orden de dependencia
+(`libfreetype.a`, `libpng.a`, `libz.a`, `libsamplerate.a`) — cada
+dependencia después de quien la usa. Verificado: el parche aplica limpio
+al tag v2.1.4 real junto con el parche EFX, es idempotente, y el
+mecanismo de orden ya quedó probado por la línea de enlace real del
+run #15 (las librerías añadidas caen después de `libSDL2_ttf.a` y
+`libSDL2.a`).
