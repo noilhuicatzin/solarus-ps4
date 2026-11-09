@@ -13,13 +13,13 @@
 #include <GLES2/gl2.h>
 #include <stdio.h>
 
-static FILE *logf;
+static FILE *diag_log;
 
 static void dlog(const char *msg)
 {
-    if (logf) {
-        fprintf(logf, "%s\n", msg);
-        fflush(logf);
+    if (diag_log) {
+        fprintf(diag_log, "%s\n", msg);
+        fflush(diag_log);
     }
     SDL_Log("%s", msg);
 }
@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     (void)argc;
     (void)argv;
 
-    logf = fopen("/data/gl-smoke.log", "w");
+    diag_log = fopen("/data/gl-smoke.log", "w");
     dlog("[diag] gl-smoke start");
 
     /* Load the Piglet + Shacc modules from the known-good location
@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
         char buf[512];
         snprintf(buf, sizeof(buf), "[diag] SDL_Init(VIDEO) failed: %s", SDL_GetError());
         dlog(buf);
-        if (logf) fclose(logf);
+        if (diag_log) fclose(diag_log);
         return 1;
     }
     dlog("[diag] SDL_Init(VIDEO) ok");
@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
         char buf[512];
         snprintf(buf, sizeof(buf), "[diag] SDL_CreateWindow failed: %s", SDL_GetError());
         dlog(buf);
-        if (logf) fclose(logf);
+        if (diag_log) fclose(diag_log);
         return 2;
     }
     dlog("[diag] SDL_CreateWindow ok");
@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
         char buf[512];
         snprintf(buf, sizeof(buf), "[diag] SDL_GL_CreateContext failed: %s", SDL_GetError());
         dlog(buf);
-        if (logf) fclose(logf);
+        if (diag_log) fclose(diag_log);
         return 3;
     }
     dlog("[diag] SDL_GL_CreateContext ok");
@@ -108,6 +108,6 @@ int main(int argc, char *argv[])
     SDL_GL_DeleteContext(ctx);
     SDL_DestroyWindow(win);
     SDL_Quit();
-    if (logf) fclose(logf);
+    if (diag_log) fclose(diag_log);
     return 0;
 }
