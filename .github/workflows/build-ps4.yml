@@ -57,7 +57,7 @@ jobs:
           # NOTE: OpenOrbis/llvm has no 18.1.8 release zip (404 on
           # llvm-18.1.8-win64.zip); same fix as the SoH port (run #7, green).
           [ -f llvm/bin/clang.exe ] || curl -fL -o LLVM-18.1.8-win64.exe https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.8/LLVM-18.1.8-win64.exe
-          [ -f llvm/bin/clang.exe ] || 7z x -y -o llvm LLVM-18.1.8-win64.exe >/dev/null
+          [ -f llvm/bin/clang.exe ] || 7z x -y -ollvm LLVM-18.1.8-win64.exe >/dev/null
           # OpenOrbis toolchain v0.5.4 (the openorbis-ps4-toolchain-0.5.4.zip
           # asset does not exist either — 404); use toolchain-llvm-18.tar.gz,
           # same source as the SoH port. It extracts to OpenOrbis/PS4Toolchain.
