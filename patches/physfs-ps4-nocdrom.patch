@@ -1,0 +1,19 @@
+--- a/src/physfs_platforms.h
++++ b/src/physfs_platforms.h
+@@ -53,8 +53,16 @@
+ #  define PHYSFS_PLATFORM_SOLARIS 1
+ #  define PHYSFS_PLATFORM_UNIX 1
+ #  define PHYSFS_PLATFORM_POSIX 1
++#elif defined(__PS4__)
++/* PS4 (OpenOrbis): the toolchain targets x86_64-pc-freebsd12-elf, so
++ * __FreeBSD__ is also defined, but the sysroot has neither <sys/ucred.h>
++ * nor <sys/sysctl.h> and there is no CD-ROM to detect. Take the Unix
++ * platform without CD-ROM support instead of the FreeBSD branch below. */
++#  define PHYSFS_NO_CDROM_SUPPORT 1
++#  define PHYSFS_PLATFORM_UNIX 1
++#  define PHYSFS_PLATFORM_POSIX 1
+ #elif defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__DragonFly__)
+ #  define PHYSFS_PLATFORM_FREEBSD 1
+ #  define PHYSFS_PLATFORM_BSD 1
+ #  define PHYSFS_PLATFORM_UNIX 1
+ #  define PHYSFS_PLATFORM_POSIX 1

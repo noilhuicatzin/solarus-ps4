@@ -113,6 +113,16 @@ fetch SDL_ttf https://github.com/libsdl-org/SDL_ttf.git release-2.24.0
 build SDL_ttf "$SRC/SDL_ttf" -DSDL2TTF_VENDORED=OFF -DSDL2TTF_SAMPLES=OFF -DSDL2TTF_HARFBUZZ=OFF
 
 fetch physfs https://github.com/icculus/physfs.git release-3.2.0
+
+# PS4 patch: PhysFS takes its FreeBSD branch (target x86_64-pc-freebsd12-elf)
+# and includes <sys/ucred.h> + <sys/sysctl.h>, neither in the OpenOrbis
+# sysroot; CD-ROM detection is irrelevant on PS4. Idempotent like the SDL
+# patch above: safe with freshly cloned or cached deps.
+PATCH="$HERE/patches/physfs-ps4-nocdrom.patch"
+if ! git -C "$SRC/physfs" apply --reverse --check "$PATCH" >/dev/null 2>&1; then
+    git -C "$SRC/physfs" apply "$PATCH"
+fi
+
 build physfs "$SRC/physfs" -DPHYSFS_BUILD_TEST=OFF -DPHYSFS_BUILD_STATIC=ON -DPHYSFS_BUILD_SHARED=OFF
 
 # Lua 5.1.5 (tarball, no git repo): built with the lua-cmake wrapper below.
