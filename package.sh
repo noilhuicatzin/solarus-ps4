@@ -29,6 +29,9 @@ STAGE="$HERE/pkg"
 OUT="${OUT_DIR:-$HERE/out}"
 
 [ -f "$ELF" ] || { echo "missing $ELF, build first"; exit 1; }
+# Resolve ELF to an absolute path now: create-fself runs after `cd "$STAGE"`,
+# so a relative ELF would no longer resolve (run #17 smoke-test failure).
+ELF="$(cd "$(dirname "$ELF")" && pwd)/$(basename "$ELF")"
 
 rm -rf "$STAGE"
 mkdir -p "$STAGE/sce_sys/about" "$STAGE/sce_module" "$OUT"
