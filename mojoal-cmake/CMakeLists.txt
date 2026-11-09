@@ -3,8 +3,11 @@
 #
 # mojoAL upstream ships a CMakeLists.txt, but it requires SDL3; the
 # Switch-era code vendored here is SDL2 and proven on a console, so it is
-# built with this wrapper instead. Produces libopenal.a + AL/al.h + AL/alc.h,
-# which is what Solarus's FindOpenAL module looks for.
+# built with this wrapper instead. Produces libopenal.a + AL/al.h + AL/alc.h
+# + the three minimal EFX headers (AL/alext.h, AL/efx.h, AL/efx-presets.h),
+# which is what Solarus's FindOpenAL module and ALWrapper.h look for.
+# The EFX headers only declare what Solarus uses (mojoAL has no EFX at
+# runtime); see mojoal/AL/efx.h and the alwrapper-ps4-efx-nullcheck patch.
 cmake_minimum_required(VERSION 3.5)
 project(mojoal C)
 
@@ -23,4 +26,6 @@ target_include_directories(openal PUBLIC
 target_link_libraries(openal PUBLIC "${SDL2_LIBRARY}")
 
 install(TARGETS openal ARCHIVE DESTINATION lib)
-install(FILES "${MOJOAL_SRC}/AL/al.h" "${MOJOAL_SRC}/AL/alc.h" DESTINATION include/AL)
+install(FILES "${MOJOAL_SRC}/AL/al.h" "${MOJOAL_SRC}/AL/alc.h"
+    "${MOJOAL_SRC}/AL/alext.h" "${MOJOAL_SRC}/AL/efx.h"
+    "${MOJOAL_SRC}/AL/efx-presets.h" DESTINATION include/AL)
