@@ -102,6 +102,19 @@ if ! git -C "$SRC/SDL" apply --reverse --check "$PATCH" >/dev/null 2>&1; then
     git -C "$SRC/SDL" apply "$PATCH"
 fi
 
+# PS4 patch: force the PS4 drivers (run #23 root cause). Our toolchain sets
+# CMAKE_SYSTEM_NAME PS4 and the PS4 platform file sets UNIX=1, so SDL's
+# platform chain takes the UNIX branch and skips the elseif (PS4) block —
+# the build ends up with ONLY the dummy video driver ("No available video
+# device" / "PS4 not available" on console). This patch adds a guarded
+# if (PS4 AND NOT SDL_VIDEO_DRIVER_PS4) block after the chain that
+# replicates the elseif (PS4) setup (audio/filesystem/joystick/video
+# drivers, EGL/ES2, Sce libs, -D__PS4__). Idempotent like the one above.
+PATCH="$HERE/patches/sdl-ps4-force-drivers.patch"
+if ! git -C "$SRC/SDL" apply --reverse --check "$PATCH" >/dev/null 2>&1; then
+    git -C "$SRC/SDL" apply "$PATCH"
+fi
+
 build SDL "$SRC/SDL" -DPS4=ON -DSDL_SHARED=OFF -DSDL_STATIC=ON -DSDL_TEST=OFF -DSDL2_DISABLE_SDL2MAIN=ON -DSDL2_DISABLE_INSTALL=OFF -DSDL_X11=OFF -DSDL_WAYLAND=OFF -DSDL_OPENGL=OFF -DSDL_OPENGLES=OFF -DSDL_VULKAN=OFF -DSDL_KMSDRM=OFF -DSDL_RPI=OFF -DSDL_ALSA=OFF -DSDL_PULSEAUDIO=OFF -DSDL_PIPEWIRE=OFF -DSDL_JACK=OFF -DSDL_SNDIO=OFF -DSDL_OSS=OFF -DSDL_ESD=OFF -DSDL_ARTS=OFF -DSDL_NAS=OFF -DSDL_FUSIONSOUND=OFF -DSDL_DBUS=OFF -DSDL_IBUS=OFF -DSDL_FCITX=OFF -DSDL_LIBUDEV=OFF -DSDL_HIDAPI_LIBUSB=OFF -DSDL_RPATH=OFF -DSDL_DUMMYVIDEO=ON -DSDL_DUMMYAUDIO=ON -DSDL_DISKAUDIO=OFF -DSDL_OFFSCREEN=OFF -DSDL_LOADSO=OFF -DSDL_DIRECTFB=OFF -DSDL_SYSTEM_ICONV=OFF -DSDL_LIBICONV=OFF -DSDL_CCACHE=OFF -DSDL_FILESYSTEM=ON -DSDL_VIRTUAL_JOYSTICK=ON -DSDL_HIDAPI=ON -DSDL_HIDAPI_JOYSTICK=OFF -DSDL_WERROR=OFF
 
 fetch SDL_image https://github.com/libsdl-org/SDL_image.git release-2.8.8
