@@ -32,6 +32,13 @@ OUT="${OUT_DIR:-$HERE/out}"
 # Resolve ELF to an absolute path now: create-fself runs after `cd "$STAGE"`,
 # so a relative ELF would no longer resolve (run #17 smoke-test failure).
 ELF="$(cd "$(dirname "$ELF")" && pwd)/$(basename "$ELF")"
+# Same for OUT: pkg build runs after `cd "$STAGE"`, so a relative OUT_DIR
+# (out-smoke) would resolve under pkg/ and the .pkg write would fail
+# with DirectoryNotFoundException (run #19 smoke-test failure).
+case "$OUT" in
+  /*) ;;
+  *) OUT="$HERE/$OUT" ;;
+esac
 
 rm -rf "$STAGE"
 mkdir -p "$STAGE/sce_sys/about" "$STAGE/sce_module" "$OUT"
