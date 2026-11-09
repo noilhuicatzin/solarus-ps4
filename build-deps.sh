@@ -93,6 +93,15 @@ build libsamplerate "$SRC/libsamplerate" -DLIBSAMPLERATE_EXAMPLES=OFF -DLIBSAMPL
 # there is no duplicate main() (SDL's dummy main would clash with
 # Solarus's own main on PS4, where SDL_MAIN_NEEDED is not defined).
 fetch SDL https://github.com/PacBrew/SDL.git ps4
+
+# PS4 patch: skip the FreeBSD sysctl code in SDL_sysfilesystem.c — the
+# OpenOrbis sysroot has no <sys/sysctl.h> (run #4 failed here). Idempotent:
+# safe whether SDL was freshly cloned or restored from the deps cache.
+PATCH="$HERE/patches/sdl-ps4-sysctl.patch"
+if ! git -C "$SRC/SDL" apply --reverse --check "$PATCH" >/dev/null 2>&1; then
+    git -C "$SRC/SDL" apply "$PATCH"
+fi
+
 build SDL "$SRC/SDL" -DPS4=ON -DSDL_SHARED=OFF -DSDL_STATIC=ON -DSDL_TEST=OFF -DSDL2_DISABLE_SDL2MAIN=ON -DSDL2_DISABLE_INSTALL=OFF -DSDL_X11=OFF -DSDL_WAYLAND=OFF -DSDL_OPENGL=OFF -DSDL_OPENGLES=OFF -DSDL_VULKAN=OFF -DSDL_KMSDRM=OFF -DSDL_RPI=OFF -DSDL_ALSA=OFF -DSDL_PULSEAUDIO=OFF -DSDL_PIPEWIRE=OFF -DSDL_JACK=OFF -DSDL_SNDIO=OFF -DSDL_OSS=OFF -DSDL_ESD=OFF -DSDL_ARTS=OFF -DSDL_NAS=OFF -DSDL_FUSIONSOUND=OFF -DSDL_DBUS=OFF -DSDL_IBUS=OFF -DSDL_FCITX=OFF -DSDL_LIBUDEV=OFF -DSDL_HIDAPI_LIBUSB=OFF -DSDL_RPATH=OFF -DSDL_DUMMYVIDEO=ON -DSDL_DUMMYAUDIO=ON -DSDL_DISKAUDIO=OFF -DSDL_OFFSCREEN=OFF -DSDL_LOADSO=OFF -DSDL_DIRECTFB=OFF -DSDL_SYSTEM_ICONV=OFF -DSDL_LIBICONV=OFF -DSDL_CCACHE=OFF -DSDL_FILESYSTEM=ON -DSDL_VIRTUAL_JOYSTICK=ON -DSDL_HIDAPI=ON -DSDL_HIDAPI_JOYSTICK=OFF -DSDL_WERROR=OFF
 
 fetch SDL_image https://github.com/libsdl-org/SDL_image.git release-2.8.8
