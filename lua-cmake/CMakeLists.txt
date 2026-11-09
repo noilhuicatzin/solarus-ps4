@@ -24,4 +24,8 @@ add_library(lua STATIC ${LUA_LIB_SOURCES})
 target_include_directories(lua PUBLIC "${LUA_SRC}/src")
 
 install(TARGETS lua ARCHIVE DESTINATION lib)
-install(DIRECTORY "${LUA_SRC}/src/" DESTINATION include FILES_MATCHING PATTERN "*.h")
+# NOTE: the pattern must cover *.hpp too: Lua 5.1.5 ships lua.hpp (the C++
+# wrapper header Solarus's LuaTools.h includes), and a bare "*.h" pattern
+# does NOT match it, so it was silently never installed — FindLua still
+# passed (it only looks for lua.h) and the build then failed on lua.hpp.
+install(DIRECTORY "${LUA_SRC}/src/" DESTINATION include FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
