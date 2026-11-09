@@ -1,20 +1,144 @@
+diff --git a/include/solarus/audio/ALWrapper.h b/include/solarus/audio/ALWrapper.h
+index 26052bd..11a1af2 100644
+--- a/include/solarus/audio/ALWrapper.h
++++ b/include/solarus/audio/ALWrapper.h
+@@ -30,6 +30,7 @@ class ALWrapper {
+   public:
+     // Init
+     static void init_efx_system();
++    static bool is_efx_available();
+ 
+     // Buffers
+     static ALenum generate_buffers(ALsizei n, ALuint *buffers, const std::string& file_name);
 diff --git a/src/audio/ALWrapper.cpp b/src/audio/ALWrapper.cpp
+index 77e7ed9..d193159 100644
 --- a/src/audio/ALWrapper.cpp
 +++ b/src/audio/ALWrapper.cpp
-@@ -60,6 +60,15 @@ void ALWrapper::init_efx_system() {
+@@ -17,6 +17,7 @@
+ 
+ #include "solarus/audio/ALWrapper.h"
+ #include "solarus/core/Debug.h"
++#include <algorithm>
+ #include <sstream>
+ 
+ namespace Solarus {
+@@ -38,6 +39,13 @@ static LPALGENFILTERS alGenFilters;
+ static LPALFILTERI alFilteri;
+ static LPALFILTERF alFilterf;
+ 
++/**
++ * Whether init_efx_system() has run and the EFX function pointers above are
++ * safe to call. Stays \c false when the engine runs with no audio device
++ * (e.g. the -no-audio command-line option, or no device found).
++ */
++static bool efx_available = false;
++
+ /**
+  * Init the EFX effect system by retrieving procedure pointers
+  */
+@@ -52,6 +60,28 @@ void ALWrapper::init_efx_system() {
    alGenFilters = (LPALGENFILTERS)alGetProcAddress("alGenFilters");
    alFilteri    = (LPALFILTERI)alGetProcAddress("alFilteri");
    alFilterf    = (LPALFILTERF)alGetProcAddress("alFilterf");
- 
--  efx_available = true;
++
 +  // mojoAL (PS4) has no EFX: alGetProcAddress() returns NULL for every
 +  // EFX name, so only report EFX as available when every pointer was
 +  // actually retrieved. Otherwise the first audio effect would call a
-+  // NULL function pointer. With EFX off, the effect wrappers bail out
-+  // safely via is_efx_available() and quests run with plain audio.
++  // NULL function pointer. With EFX off, the effect wrappers below bail
++  // out safely and quests run with plain audio.
 +  efx_available = alGenEffects != nullptr && alDeleteEffects != nullptr &&
 +                  alEffecti != nullptr && alEffectf != nullptr &&
 +                  alGenAuxiliaryEffectSlots != nullptr &&
 +                  alAuxiliaryEffectSloti != nullptr && alGenFilters != nullptr &&
 +                  alFilteri != nullptr && alFilterf != nullptr;
++}
++
++/**
++ * \brief Returns whether the EFX functions above have been initialized and
++ * are safe to call.
++ * \return \c false when running with no audio device (e.g. -no-audio, or no
++ * device found): calling the EFX functions in that case would call a null
++ * function pointer.
++ */
++bool ALWrapper::is_efx_available() {
++  return efx_available;
  }
+ 
+ /**
+@@ -173,48 +203,76 @@ ALenum ALWrapper::stop_source(ALuint source, const std::string& file_name) {
+ }
+ 
+ ALenum ALWrapper::generate_effect(ALsizei n, ALuint *effects, const std::string& context_name) {
++  if (!efx_available) {
++    // No audio device: there is nothing to generate a real handle for.
++    std::fill(effects, effects + n, 0);
++    return AL_NO_ERROR;
++  }
+   clean_errors();
+   alGenEffects(n, effects);
+   return check_for_errors("Generating " + std::to_string(n) + " effect for " + context_name);
+ }
+ 
+ ALenum ALWrapper::generate_effect_slots(ALsizei n, ALuint *slots, const std::string& context_name) {
++  if (!efx_available) {
++    std::fill(slots, slots + n, 0);
++    return AL_NO_ERROR;
++  }
+   clean_errors();
+   alGenAuxiliaryEffectSlots(n, slots);
+   return check_for_errors("Generating " + std::to_string(n) + " effect slots for " + context_name);
+ }
+ 
+ ALenum ALWrapper::set_effect_int(ALuint effect, ALenum param, ALint value, const std::string& context_name) {
++  if (!efx_available) {
++    return AL_NO_ERROR;
++  }
+   clean_errors();
+   alEffecti(effect, param, value);
+   return check_for_errors("Setting effect param int " + std::to_string(param) + " for " + context_name);
+ }
+ 
+ ALenum ALWrapper::set_effect_float(ALuint effect, ALenum param, ALfloat value, const std::string& context_name) {
++  if (!efx_available) {
++    return AL_NO_ERROR;
++  }
+   clean_errors();
+   alEffectf(effect, param, value);
+   return check_for_errors("Setting effect param float " + std::to_string(param) + " for " + context_name);
+ }
+ 
+ ALenum ALWrapper::set_effect_slot_int(ALuint slot, ALenum param, ALint value, const std::string& context_name) {
++  if (!efx_available) {
++    return AL_NO_ERROR;
++  }
+   clean_errors();
+   alAuxiliaryEffectSloti(slot, param, value);
+   return check_for_errors("Setting effect slot param int " + std::to_string(param) + " for " + context_name);
+ }
+ 
+ ALenum ALWrapper::generate_filter(ALsizei n, ALuint *filters, const std::string& context_name) {
++  if (!efx_available) {
++    std::fill(filters, filters + n, 0);
++    return AL_NO_ERROR;
++  }
+   clean_errors();
+   alGenFilters(n, filters);
+   return check_for_errors("Generating " + std::to_string(n) + " filter for " + context_name);
+ }
+ 
+ ALenum ALWrapper::set_filter_int(ALuint filter, ALenum param, ALint value, const std::string& context_name) {
++  if (!efx_available) {
++    return AL_NO_ERROR;
++  }
+   clean_errors();
+   alFilteri(filter, param, value);
+   return check_for_errors("Setting filter param int " + std::to_string(param) + " for " + context_name);
+ }
+ 
+ ALenum ALWrapper::set_filter_float(ALuint filter, ALenum param, ALfloat value, const std::string& context_name) {
++  if (!efx_available) {
++    return AL_NO_ERROR;
++  }
+   clean_errors();
+   alFilterf(filter, param, value);
+   return check_for_errors("Setting filter param float " + std::to_string(param) + " for " + context_name);
