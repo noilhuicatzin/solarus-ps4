@@ -1,0 +1,20 @@
+diff --git a/src/audio/ALWrapper.cpp b/src/audio/ALWrapper.cpp
+--- a/src/audio/ALWrapper.cpp
++++ b/src/audio/ALWrapper.cpp
+@@ -60,6 +60,15 @@ void ALWrapper::init_efx_system() {
+   alGenFilters = (LPALGENFILTERS)alGetProcAddress("alGenFilters");
+   alFilteri    = (LPALFILTERI)alGetProcAddress("alFilteri");
+   alFilterf    = (LPALFILTERF)alGetProcAddress("alFilterf");
+ 
+-  efx_available = true;
++  // mojoAL (PS4) has no EFX: alGetProcAddress() returns NULL for every
++  // EFX name, so only report EFX as available when every pointer was
++  // actually retrieved. Otherwise the first audio effect would call a
++  // NULL function pointer. With EFX off, the effect wrappers bail out
++  // safely via is_efx_available() and quests run with plain audio.
++  efx_available = alGenEffects != nullptr && alDeleteEffects != nullptr &&
++                  alEffecti != nullptr && alEffectf != nullptr &&
++                  alGenAuxiliaryEffectSlots != nullptr &&
++                  alAuxiliaryEffectSloti != nullptr && alGenFilters != nullptr &&
++                  alFilteri != nullptr && alFilterf != nullptr;
+ }
