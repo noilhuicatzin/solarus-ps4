@@ -42,7 +42,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: tools
-          key: solarus-ps4-tools-oo0.5.4-llvm18.1.8-cmake3.28.6-ninja1.12.1-net8-v1
+          key: solarus-ps4-tools-oo0.5.4-llvm18.1.8-cmake3.28.6-ninja1.12.1-net8-v2
 
       - name: Download tools
         working-directory: solarus-ps4
@@ -53,10 +53,17 @@ jobs:
           [ -f cmake-3.28.6-windows-x86_64/bin/cmake.exe ] || 7z x -y cmake.zip >/dev/null
           [ -f ninja/ninja.exe ] || curl -fL -o ninja.zip https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-win.zip
           [ -f ninja/ninja.exe ] || (mkdir -p ninja && 7z x -y ninja.zip -oninja >/dev/null)
-          [ -f llvm/bin/clang.exe ] || curl -fL -o llvm.zip https://github.com/OpenOrbis/llvm/releases/download/18.1.8/llvm-18.1.8-win64.zip
-          [ -f llvm/bin/clang.exe ] || 7z x -y llvm.zip >/dev/null
-          [ -f OpenOrbis/OpenOrbis/PS4Toolchain/include/stdio.h ] || curl -fL -o openorbis.zip https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5.4/openorbis-ps4-toolchain-0.5.4.zip
-          [ -f OpenOrbis/OpenOrbis/PS4Toolchain/include/stdio.h ] || 7z x -y openorbis.zip >/dev/null
+          # Stock LLVM 18.1.8 (self-extracting exe; unpack with 7-Zip, do not install).
+          # NOTE: OpenOrbis/llvm has no 18.1.8 release zip (404 on
+          # llvm-18.1.8-win64.zip); same fix as the SoH port (run #7, green).
+          [ -f llvm/bin/clang.exe ] || curl -fL -o LLVM-18.1.8-win64.exe https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.8/LLVM-18.1.8-win64.exe
+          [ -f llvm/bin/clang.exe ] || 7z x -y -o llvm LLVM-18.1.8-win64.exe >/dev/null
+          # OpenOrbis toolchain v0.5.4 (the openorbis-ps4-toolchain-0.5.4.zip
+          # asset does not exist either — 404); use toolchain-llvm-18.tar.gz,
+          # same source as the SoH port. It extracts to OpenOrbis/PS4Toolchain.
+          [ -f OpenOrbis/OpenOrbis/PS4Toolchain/include/stdio.h ] || curl -fL -o toolchain-llvm-18.tar.gz https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5.4/toolchain-llvm-18.tar.gz
+          [ -f OpenOrbis/OpenOrbis/PS4Toolchain/include/stdio.h ] || (mkdir -p OpenOrbis && tar -xzf toolchain-llvm-18.tar.gz -C OpenOrbis)
+          ./llvm/bin/clang.exe --version | head -2
           ls -la
 
       - name: Setup .NET 8
