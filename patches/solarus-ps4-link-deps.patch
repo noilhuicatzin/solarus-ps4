@@ -1,0 +1,29 @@
+diff --git a/cmake/AddSolarusLibrary.cmake b/cmake/AddSolarusLibrary.cmake
+index 76fd996..0bcb921 100644
+--- a/cmake/AddSolarusLibrary.cmake
++++ b/cmake/AddSolarusLibrary.cmake
+@@ -33,6 +33,24 @@ target_link_libraries(solarus
+     ModPlug::ModPlug
+ )
+ 
++# PS4: SDL2 and SDL2_ttf are linked as plain static archives (see
++# configure.sh: -DSDL2_LIBRARY / -DSDL2_TTF_LIBRARY are single .a paths),
++# so their own dependencies are not propagated to the link line. SDL2_ttf
++# needs FreeType and SDL2's PS4 audio driver needs libsamplerate, or the
++# link fails with undefined FT_* / src_* symbols. Both live in the same
++# prefix as SDL2 (derived from SDL2_LIBRARY, which the find module has
++# already resolved by the time this file is included). Appended at the end
++# of the PUBLIC list so they land after libSDL2_ttf.a and libSDL2.a in the
++# final link line, which static linking requires.
++if(CMAKE_SYSTEM_NAME STREQUAL "PS4")
++  get_filename_component(_PS4_PREFIX "${SDL2_LIBRARY}" DIRECTORY)
++  get_filename_component(_PS4_PREFIX "${_PS4_PREFIX}" DIRECTORY)
++  target_link_libraries(solarus PUBLIC
++    "${_PS4_PREFIX}/lib/libfreetype.a"
++    "${_PS4_PREFIX}/lib/libsamplerate.a"
++  )
++endif()
++
+ # Add dynamic loader library if required
+ if(CMAKE_DL_LIBS)
+   target_link_libraries(solarus PUBLIC ${CMAKE_DL_LIBS})
