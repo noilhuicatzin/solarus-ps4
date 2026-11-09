@@ -7,7 +7,7 @@
 #   2. Verifies the PS4-relevant CMake options exist in that version
 #      (SOLARUS_GL_ES, SOLARUS_USE_LUAJIT, SOLARUS_BASE_WRITE_DIR,
 #      SOLARUS_DEFAULT_QUEST): the whole PS4 adaptation is done with -D
-#      options in configure.sh, except ONE source patch (step 3). If a
+#      options in configure.sh, except TWO source patches (steps 3-4). If a
 #      future version drops one of the options, this script fails loudly
 #      instead of silently building the wrong thing.
 #   3. Applies patches/alwrapper-ps4-efx-nullcheck.patch to the Solarus
@@ -15,6 +15,11 @@
 #      must only report EFX as available when every function pointer
 #      was actually retrieved, or the first audio effect would call a
 #      NULL pointer. See the patch header for the full reasoning.
+#   4. Applies patches/solarus-ps4-link-deps.patch (idempotent): SDL2 and
+#      SDL2_ttf are linked as plain static archives, so their own
+#      dependencies are not propagated — SDL2_ttf needs FreeType and
+#      SDL2's PS4 audio driver needs libsamplerate, or the link fails
+#      with undefined FT_* / src_* symbols (run #14). See the patch.
 #
 # It is idempotent: if <workspace>/solarus already exists it reuses it
 # (deletes it first only if --clean is passed). It never downloads game
@@ -58,12 +63,14 @@ for opt in SOLARUS_GL_ES SOLARUS_USE_LUAJIT SOLARUS_BASE_WRITE_DIR SOLARUS_DEFAU
 done
 
 echo "== applying PS4 source patches (idempotent)"
-PATCH="$HERE/patches/alwrapper-ps4-efx-nullcheck.patch"
-if git -C "$WORKSPACE/solarus" apply --reverse --check "$PATCH" >/dev/null 2>&1; then
-    echo "   already applied: alwrapper-ps4-efx-nullcheck.patch"
-else
-    git -C "$WORKSPACE/solarus" apply "$PATCH"
-    echo "   applied: alwrapper-ps4-efx-nullcheck.patch"
-fi
+for PATCH in "$HERE/patches/alwrapper-ps4-efx-nullcheck.patch" "$HERE/patches/solarus-ps4-link-deps.patch"; do
+    NAME="$(basename "$PATCH")"
+    if git -C "$WORKSPACE/solarus" apply --reverse --check "$PATCH" >/dev/null 2>&1; then
+        echo "   already applied: $NAME"
+    else
+        git -C "$WORKSPACE/solarus" apply "$PATCH"
+        echo "   applied: $NAME"
+    fi
+done
 
-echo "== sources ready: $WORKSPACE/solarus (1 PS4 patch applied)"
+echo "== sources ready: $WORKSPACE/solarus (2 PS4 patches applied)"
