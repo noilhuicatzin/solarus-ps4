@@ -81,7 +81,7 @@ jobs:
           path: |
             solarus-ps4/prefix
             solarus-ps4/deps
-          key: solarus-ps4-deps-oo0.5.4-llvm18.1.8-sdl2.0.18ps4-physfs3.2.0-lua5.1.5-v1-${{ hashFiles('solarus-ps4/build-deps.sh', 'solarus-ps4/cmake/ps4-toolchain.cmake', 'solarus-ps4/cmake/Platform/PS4.cmake') }}
+          key: solarus-ps4-deps-oo0.5.4-llvm18.1.8-sdl2.0.18ps4-physfs3.2.0-lua5.1.5-v1-${{ hashFiles('solarus-ps4/build-deps.sh', 'solarus-ps4/cmake/ps4-toolchain.cmake', 'solarus-ps4/cmake/Platform/PS4.cmake', 'solarus-ps4/lua-cmake/CMakeLists.txt', 'solarus-ps4/mojoal-cmake/CMakeLists.txt') }}
 
       - name: Build deps
         working-directory: solarus-ps4
