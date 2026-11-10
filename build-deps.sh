@@ -115,6 +115,20 @@ if ! git -C "$SRC/SDL" apply --reverse --check "$PATCH" >/dev/null 2>&1; then
     git -C "$SRC/SDL" apply "$PATCH"
 fi
 
+# PS4 patch: C89 declarations (run #24 root cause). SDL's own CMakeLists
+# adds -Werror=declaration-after-statement unconditionally (NOT gated on
+# SDL_WERROR), and the PacBrew PS4 video driver declares variables after
+# statements in 9 places (SDL_ps4video.c x8, SDL_ps4piglet.c x1) — code
+# that never compiled before because the PS4 drivers were never built.
+# This patch moves those declarations to the top of their blocks (with an
+# assignment split where the initializer calls a function), changing no
+# logic. Verified locally: 0 -Wdeclaration-after-statement warnings in
+# all 7 PS4 driver .c files after applying. Idempotent like the ones above.
+PATCH="$HERE/patches/sdl-ps4-c89-declarations.patch"
+if ! git -C "$SRC/SDL" apply --reverse --check "$PATCH" >/dev/null 2>&1; then
+    git -C "$SRC/SDL" apply "$PATCH"
+fi
+
 build SDL "$SRC/SDL" -DPS4=ON -DSDL_SHARED=OFF -DSDL_STATIC=ON -DSDL_TEST=OFF -DSDL2_DISABLE_SDL2MAIN=ON -DSDL2_DISABLE_INSTALL=OFF -DSDL_X11=OFF -DSDL_WAYLAND=OFF -DSDL_OPENGL=OFF -DSDL_OPENGLES=OFF -DSDL_VULKAN=OFF -DSDL_KMSDRM=OFF -DSDL_RPI=OFF -DSDL_ALSA=OFF -DSDL_PULSEAUDIO=OFF -DSDL_PIPEWIRE=OFF -DSDL_JACK=OFF -DSDL_SNDIO=OFF -DSDL_OSS=OFF -DSDL_ESD=OFF -DSDL_ARTS=OFF -DSDL_NAS=OFF -DSDL_FUSIONSOUND=OFF -DSDL_DBUS=OFF -DSDL_IBUS=OFF -DSDL_FCITX=OFF -DSDL_LIBUDEV=OFF -DSDL_HIDAPI_LIBUSB=OFF -DSDL_RPATH=OFF -DSDL_DUMMYVIDEO=ON -DSDL_DUMMYAUDIO=ON -DSDL_DISKAUDIO=OFF -DSDL_OFFSCREEN=OFF -DSDL_LOADSO=OFF -DSDL_DIRECTFB=OFF -DSDL_SYSTEM_ICONV=OFF -DSDL_LIBICONV=OFF -DSDL_CCACHE=OFF -DSDL_FILESYSTEM=ON -DSDL_VIRTUAL_JOYSTICK=ON -DSDL_HIDAPI=ON -DSDL_HIDAPI_JOYSTICK=OFF -DSDL_WERROR=OFF
 
 fetch SDL_image https://github.com/libsdl-org/SDL_image.git release-2.8.8
