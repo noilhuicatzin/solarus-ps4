@@ -7,7 +7,7 @@
 #   2. Verifies the PS4-relevant CMake options exist in that version
 #      (SOLARUS_GL_ES, SOLARUS_USE_LUAJIT, SOLARUS_BASE_WRITE_DIR,
 #      SOLARUS_DEFAULT_QUEST): the whole PS4 adaptation is done with -D
-#      options in configure.sh, except TWO source patches (steps 3-4). If a
+#      options in configure.sh, except THREE source patches (steps 3-5). If a
 #      future version drops one of the options, this script fails loudly
 #      instead of silently building the wrong thing.
 #   3. Applies patches/alwrapper-ps4-efx-nullcheck.patch to the Solarus
@@ -20,6 +20,16 @@
 #      dependencies are not propagated — SDL2_ttf needs FreeType and
 #      SDL2's PS4 audio driver needs libsamplerate, or the link fails
 #      with undefined FT_* / src_* symbols (run #14). See the patch.
+#   5. Applies patches/solarus-ps4-diag-log.patch (idempotent, diagnostic
+#      only — remove once the engine boots a quest): the engine logs to
+#      stdout and its file logging writes warnings/errors to a RELATIVE
+#      "error.txt" that lands nowhere reliable on PS4, so the engine
+#      crashed with a quest installed (run #27 build) and left no log.
+#      The patch writes the log to /data/solarus/error.txt (absolute),
+#      makes Logger::info() also write to the file, and adds [PS4] [diag]
+#      markers after each MainLoop init step (quest open, System init,
+#      CurrentQuest init, quest properties, LuaContext, main.lua,
+#      preloading, window shown) plus around MainLoop::run().
 #
 # It is idempotent: if <workspace>/solarus already exists it reuses it
 # (deletes it first only if --clean is passed). It never downloads game
@@ -63,7 +73,7 @@ for opt in SOLARUS_GL_ES SOLARUS_USE_LUAJIT SOLARUS_BASE_WRITE_DIR SOLARUS_DEFAU
 done
 
 echo "== applying PS4 source patches (idempotent)"
-for PATCH in "$HERE/patches/alwrapper-ps4-efx-nullcheck.patch" "$HERE/patches/solarus-ps4-link-deps.patch"; do
+for PATCH in "$HERE/patches/alwrapper-ps4-efx-nullcheck.patch" "$HERE/patches/solarus-ps4-link-deps.patch" "$HERE/patches/solarus-ps4-diag-log.patch"; do
     NAME="$(basename "$PATCH")"
     if git -C "$WORKSPACE/solarus" apply --reverse --check "$PATCH" >/dev/null 2>&1; then
         echo "   already applied: $NAME"
@@ -73,4 +83,4 @@ for PATCH in "$HERE/patches/alwrapper-ps4-efx-nullcheck.patch" "$HERE/patches/so
     fi
 done
 
-echo "== sources ready: $WORKSPACE/solarus (2 PS4 patches applied)"
+echo "== sources ready: $WORKSPACE/solarus (3 PS4 patches applied)"
