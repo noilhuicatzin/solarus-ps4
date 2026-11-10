@@ -1,0 +1,103 @@
+diff --git a/cli/src/main.cpp b/cli/src/main.cpp
+index b4eb53f..0dd3988 100644
+--- a/cli/src/main.cpp
++++ b/cli/src/main.cpp
+@@ -16,6 +16,7 @@
+  */
+ #include "solarus/core/Arguments.h"
+ #include "solarus/core/Debug.h"
++#include "solarus/core/Logger.h"
+ #include "solarus/core/MainLoop.h"
+ #include <iostream>
+ #include <string>
+@@ -113,7 +114,9 @@ int main(int argc, char** argv) {
+   }
+   else {
+     // Run the main loop.
++    Logger::info("[PS4] [diag] engine start, calling MainLoop::run");
+     MainLoop(args).run();
++    Logger::info("[PS4] [diag] MainLoop::run returned");
+   }
+ 
+   return 0;
+diff --git a/src/core/Logger.cpp b/src/core/Logger.cpp
+index fb2ab9c..a5406c2 100644
+--- a/src/core/Logger.cpp
++++ b/src/core/Logger.cpp
+@@ -27,7 +27,7 @@ namespace Logger {
+ namespace {
+ 
+ #ifdef SOLARUS_FILE_LOGGING
+-  const std::string error_log_file_name = "error.txt";
++  const std::string error_log_file_name = "/data/solarus/error.txt";
+   std::ofstream error_log_file;
+ 
+   /**
+@@ -79,7 +79,11 @@ SOLARUS_API void debug(const std::string& message) {
+  */
+ SOLARUS_API void info(const std::string& message) {
+ 
+-  print("Info: " + message);
++  std::string prefixed_message = "Info: " + message;
++  print(prefixed_message);
++#ifdef SOLARUS_FILE_LOGGING
++  print(prefixed_message, get_error_log_file());
++#endif
+ }
+ 
+ /**
+diff --git a/src/core/MainLoop.cpp b/src/core/MainLoop.cpp
+index 011ff40..bb5b8a9 100644
+--- a/src/core/MainLoop.cpp
++++ b/src/core/MainLoop.cpp
+@@ -173,15 +173,19 @@ MainLoop::MainLoop(const Arguments& args):
+     Debug::error("No quest was found in the directory '" + quest_path + "'");
+     return;
+   }
++  Logger::info("[PS4] [diag] quest opened ok");
+ 
+   // Initialize engine features (audio, video...).
+   System::initialize(args, resource_provider);
++  Logger::info("[PS4] [diag] System::initialize done");
+ 
+   // Read the quest resource list from data.
+   CurrentQuest::initialize();
++  Logger::info("[PS4] [diag] CurrentQuest::initialize done");
+ 
+   // Read the quest general properties.
+   load_quest_properties();
++  Logger::info("[PS4] [diag] load_quest_properties done");
+ 
+   make_root_surface();
+ 
+@@ -189,6 +193,7 @@ MainLoop::MainLoop(const Arguments& args):
+   // Do this after the creation of the window, but before showing the window,
+   // because Lua might change the video mode initially.
+   lua_context = std::unique_ptr<LuaContext>(new LuaContext(*this));
++  Logger::info("[PS4] [diag] LuaContext created");
+ 
+   if(Video::get_renderer().needs_window_workaround()) {
+     Video::show_window();
+@@ -197,6 +202,7 @@ MainLoop::MainLoop(const Arguments& args):
+   } else {
+     lua_context->initialize(lua_script_arg);
+   }
++  Logger::info("[PS4] [diag] lua_context->initialize done (main.lua ran)");
+ 
+   if (lua_console_enabled) {
+     Logger::info("Lua console: yes");
+@@ -215,12 +221,14 @@ MainLoop::MainLoop(const Arguments& args):
+ 
+   // Start loading resources in background.
+   resource_provider.start_preloading_resources();
++  Logger::info("[PS4] [diag] preloading started");
+ 
+   // Display the game icon as window icon (if any)
+   setup_game_icon();
+ 
+   // Show the window.
+   Video::show_window();
++  Logger::info("[PS4] [diag] window shown");
+ 
+   // Set the fullscreen mode if requested.
+   const std::string& fullscreen_arg = args.get_argument_value("-fullscreen");
