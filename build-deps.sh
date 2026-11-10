@@ -115,15 +115,17 @@ if ! git -C "$SRC/SDL" apply --reverse --check "$PATCH" >/dev/null 2>&1; then
     git -C "$SRC/SDL" apply "$PATCH"
 fi
 
-# PS4 patch: C89 declarations (run #24 root cause). SDL's own CMakeLists
-# adds -Werror=declaration-after-statement unconditionally (NOT gated on
-# SDL_WERROR), and the PacBrew PS4 video driver declares variables after
-# statements in 9 places (SDL_ps4video.c x8, SDL_ps4piglet.c x1) — code
-# that never compiled before because the PS4 drivers were never built.
-# This patch moves those declarations to the top of their blocks (with an
-# assignment split where the initializer calls a function), changing no
-# logic. Verified locally: 0 -Wdeclaration-after-statement warnings in
-# all 7 PS4 driver .c files after applying. Idempotent like the ones above.
+# PS4 patch: C89 declarations (run #24 root cause, extended in run #26).
+# SDL's own CMakeLists adds -Werror=declaration-after-statement
+# unconditionally (NOT gated on SDL_WERROR), and the PacBrew PS4 drivers
+# declare variables after statements in 12 places (SDL_ps4video.c x8,
+# SDL_ps4piglet.c x2, SDL_sysjoystick.c x2) — code that never compiled
+# before because the PS4 drivers were never built. This patch moves those
+# declarations to the top of their blocks (with an assignment split where
+# the initializer calls a function), changing no logic. Verified locally:
+# 0 -Wdeclaration-after-statement warnings in all 7 PS4 driver .c files
+# after applying (checked with the correct per-file driver macros, incl.
+# SDL_JOYSTICK_PS4 for the joystick driver). Idempotent like the ones above.
 PATCH="$HERE/patches/sdl-ps4-c89-declarations.patch"
 if ! git -C "$SRC/SDL" apply --reverse --check "$PATCH" >/dev/null 2>&1; then
     git -C "$SRC/SDL" apply "$PATCH"
