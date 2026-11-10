@@ -1,3 +1,33 @@
+diff --git a/src/joystick/ps4/SDL_sysjoystick.c b/src/joystick/ps4/SDL_sysjoystick.c
+index 7fb0651..08ec47b 100644
+--- a/src/joystick/ps4/SDL_sysjoystick.c
++++ b/src/joystick/ps4/SDL_sysjoystick.c
+@@ -336,11 +336,11 @@ SDL_JoystickGUID PS4_JoystickGetDeviceGUID(int device_index) {
+ static int
+ PS4_JoystickRumble(SDL_Joystick *joystick, Uint16 low_frequency_rumble, Uint16 high_frequency_rumble) {
+     int index = (int) SDL_JoystickInstanceID(joystick);
++    OrbisPadVibeParam param = {high_frequency_rumble / 256, low_frequency_rumble / 256};
+     if (index > ORBIS_USER_SERVICE_MAX_LOGIN_USERS) {
+         return SDL_SetError("PS4_JoystickRumble: invalid joystick index: %i\n", index);
+     }
+ 
+-    OrbisPadVibeParam param = {high_frequency_rumble / 256, low_frequency_rumble / 256};
+     scePadSetVibration(pads_handles[index], &param);
+ 
+     return 0;
+@@ -361,11 +361,11 @@ PS4_JoystickGetCapabilities(SDL_Joystick *joystick) {
+ static int
+ PS4_JoystickSetLED(SDL_Joystick *joystick, Uint8 red, Uint8 green, Uint8 blue) {
+     int index = (int) SDL_JoystickInstanceID(joystick);
++    OrbisPadColor color = {red, green, blue, 255};
+     if (index > ORBIS_USER_SERVICE_MAX_LOGIN_USERS) {
+         return SDL_SetError("PS4_JoystickSetLED: invalid joystick index: %i\n", index);
+     }
+ 
+-    OrbisPadColor color = {red, green, blue, 255};
+     scePadSetLightBar(pads_handles[index], &color);
+ 
+     return 0;
 diff --git a/src/video/ps4/SDL_ps4piglet.c b/src/video/ps4/SDL_ps4piglet.c
 index 17016e3..0545613 100644
 --- a/src/video/ps4/SDL_ps4piglet.c
