@@ -29,6 +29,12 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 source "$HERE/env.sh"
 W() { cygpath -m "$1"; }
 P="$HERE/prefix"
+# MSYS2 (Git Bash) convierte las rutas /data/... de los -D en rutas
+# Windows (C:/Program Files/Git/data/...), y el motor las graba así.
+# Sin esto, el .pkg busca la quest y su carpeta de saves en una ruta de
+# Windows que no existe en la PS4 y muere en open_quest. Las rutas reales
+# ya van por cygpath -m (W), así que desactivar la conversión es seguro.
+export MSYS_NO_PATHCONV=1
 cmake -G Ninja -S "$(W "$HERE/../solarus")" -B "$(W "$HERE/build")" \
     -DCMAKE_TOOLCHAIN_FILE="$(W "$HERE/cmake/ps4-toolchain.cmake")" \
     -DCMAKE_BUILD_TYPE=Release \
